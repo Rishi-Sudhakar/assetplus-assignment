@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const Poster = require('../../models/Poster');
 
 // Configure multer for file upload
@@ -28,7 +29,6 @@ const upload = multer({
 });
 
 // Create uploads directory if it doesn't exist
-const fs = require('fs');
 if (!fs.existsSync('public/uploads')) {
     fs.mkdirSync('public/uploads', { recursive: true });
 }
@@ -95,6 +95,59 @@ router.post('/:id/comment', async (req, res) => {
         res.json(updatedPoster);
     } catch (error) {
         res.status(400).json({ message: error.message });
+    }
+});
+
+// Update a poster
+router.put('/:id', upload.single('image'), async (req, res) => {
+    try {
+        const poster = await Poster.findById(req.params.id);
+        if (!poster) {
+            return res.status(404).json({ message: 'Poster not found' });
+        }
+
+        // If a new image is uploaded, delete the old one and update
+        if (req.file) {
+            // Delete old image if it exists
+            const oldImagePath = path.join(__dirname, '../../public', poster.imageUrl);
+            if (fs.existsSync(oldImagePath)) {
+                fs.unlinkSync(oldImagePath);
+            }
+            poster.imageUrl = `/uploads/${req.file.filename}`;
+        }
+
+        // Update other fields
+        poster.title = req.body.title || poster.title;
+        poster.description = req.body.description || poster.description;
+        poster.category = req.body.category || poster.category;
+        poster.tags = req.body.tags ? req.body.tags.split(',').map(tag => tag.trim()) : poster.tags;
+        poster.displayDate = req.body.displayDate || poster.displayDate;
+
+        const updatedPoster = await poster.save();
+        res.json(updatedPoster);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// Delete a poster
+router.delete('/:id', async (req, res) => {
+    try {
+        const poster = await Poster.findById(req.params.id);
+        if (!poster) {
+            return res.status(404).json({ message: 'Poster not found' });
+        }
+
+        // Delete the image file
+        const imagePath = path.join(__dirname, '../../public', poster.imageUrl);
+        if (fs.existsSync(imagePath)) {
+            fs.unlinkSync(imagePath);
+        }
+
+        await poster.remove();
+        res.json({ message: 'Poster deleted successfully' });
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
 });
 

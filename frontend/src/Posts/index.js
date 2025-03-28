@@ -8,6 +8,7 @@ function Posts() {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
     const [selectedImage, setSelectedImage] = useState(null);
+    const [editingPoster, setEditingPoster] = useState(null);
     const [newPoster, setNewPoster] = useState({
         title: '',
         description: '',
@@ -36,21 +37,57 @@ function Posts() {
         }
     };
 
+    const handleEdit = (poster) => {
+        setEditingPoster(poster);
+        setNewPoster({
+            title: poster.title,
+            description: poster.description,
+            image: null,
+            category: poster.category,
+            tags: poster.tags?.join(', ') || '',
+            displayDate: poster.displayDate?.split('T')[0] || new Date().toISOString().split('T')[0]
+        });
+        setIsModalOpen(true);
+    };
+
+    const handleDelete = async (posterId) => {
+        if (window.confirm('Are you sure you want to delete this poster?')) {
+            try {
+                const response = await fetch(`${API_URL}/post/${posterId}`, {
+                    method: 'DELETE'
+                });
+                if (response.ok) {
+                    fetchPosters();
+                }
+            } catch (error) {
+                console.error('Error deleting poster:', error);
+            }
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         const formData = new FormData();
         formData.append('title', newPoster.title);
         formData.append('description', newPoster.description);
-        formData.append('image', newPoster.image);
         formData.append('category', newPoster.category);
         formData.append('tags', newPoster.tags);
         formData.append('displayDate', newPoster.displayDate);
+        
+        if (newPoster.image) {
+            formData.append('image', newPoster.image);
+        }
 
         try {
-            const response = await fetch(`${API_URL}/post`, {
-                method: 'POST',
+            const url = editingPoster 
+                ? `${API_URL}/post/${editingPoster._id}`
+                : `${API_URL}/post`;
+            
+            const response = await fetch(url, {
+                method: editingPoster ? 'PUT' : 'POST',
                 body: formData
             });
+            
             if (response.ok) {
                 setIsModalOpen(false);
                 setNewPoster({
@@ -61,10 +98,11 @@ function Posts() {
                     tags: '',
                     displayDate: new Date().toISOString().split('T')[0]
                 });
+                setEditingPoster(null);
                 fetchPosters();
             }
         } catch (error) {
-            console.error('Error uploading poster:', error);
+            console.error('Error saving poster:', error);
         }
     };
 
@@ -129,7 +167,18 @@ function Posts() {
                     <h1>Content Gallery</h1>
                     <p>Manage and showcase your posters collection</p>
                 </div>
-                <button onClick={() => setIsModalOpen(true)} className="add-button">
+                <button onClick={() => {
+                    setEditingPoster(null);
+                    setNewPoster({
+                        title: '',
+                        description: '',
+                        image: null,
+                        category: '',
+                        tags: '',
+                        displayDate: new Date().toISOString().split('T')[0]
+                    });
+                    setIsModalOpen(true);
+                }} className="add-button">
                     <span>+</span> Add New Poster
                 </button>
             </header>
@@ -144,6 +193,26 @@ function Posts() {
                                 onClick={() => handleImageClick(`${API_URL}${poster.imageUrl}`, poster.title)}
                             />
                             <div className="poster-category">{poster.category}</div>
+                            <div className="poster-actions">
+                                <button 
+                                    className="edit-button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEdit(poster);
+                                    }}
+                                >
+                                    ✏️
+                                </button>
+                                <button 
+                                    className="delete-button"
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDelete(poster._id);
+                                    }}
+                                >
+                                    🗑️
+                                </button>
+                            </div>
                         </div>
                         <div className="poster-info">
                             <h3>{poster.title}</h3>
@@ -239,10 +308,13 @@ function Posts() {
                 <div className="modal-overlay">
                     <div className="modal">
                         <div className="modal-header">
-                            <h2>Add New Poster</h2>
+                            <h2>{editingPoster ? 'Edit Poster' : 'Add New Poster'}</h2>
                             <button 
                                 className="close-button" 
-                                onClick={() => setIsModalOpen(false)}
+                                onClick={() => {
+                                    setIsModalOpen(false);
+                                    setEditingPoster(null);
+                                }}
                             >
                                 ×
                             </button>
@@ -305,8 +377,19 @@ function Posts() {
                                 </div>
                             </div>
                             <div className="modal-buttons">
-                                <button type="submit" className="submit-button">Upload Poster</button>
-                                <button type="button" className="cancel-button" onClick={() => setIsModalOpen(false)}>Cancel</button>
+                                <button type="submit" className="submit-button">
+                                    {editingPoster ? 'Update Poster' : 'Upload Poster'}
+                                </button>
+                                <button 
+                                    type="button" 
+                                    className="cancel-button" 
+                                    onClick={() => {
+                                        setIsModalOpen(false);
+                                        setEditingPoster(null);
+                                    }}
+                                >
+                                    Cancel
+                                </button>
                             </div>
                         </form>
                     </div>
