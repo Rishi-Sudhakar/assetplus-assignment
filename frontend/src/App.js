@@ -3,7 +3,9 @@ import Posts from './Posts';
 
 function App() {
   return (
-    <Posts />
+    <div className="App">
+      <Posts />
+    </div>
   );
 }
 
