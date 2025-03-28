@@ -6,6 +6,8 @@ const API_URL = 'http://localhost:8000';
 function Posts() {
     const [posters, setPosters] = useState([]);
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isImagePreviewOpen, setIsImagePreviewOpen] = useState(false);
+    const [selectedImage, setSelectedImage] = useState(null);
     const [newPoster, setNewPoster] = useState({
         title: '',
         description: '',
@@ -115,6 +117,11 @@ function Posts() {
         return new Date(dateString).toLocaleDateString('en-US', options);
     };
 
+    const handleImageClick = (imageUrl, title) => {
+        setSelectedImage({ url: imageUrl, title });
+        setIsImagePreviewOpen(true);
+    };
+
     return (
         <div className="posts-container">
             <header>
@@ -131,20 +138,26 @@ function Posts() {
                 {posters.map((poster) => (
                     <div key={poster._id} className="poster-card">
                         <div className="poster-image">
-                            <img src={`${API_URL}${poster.imageUrl}`} alt={poster.title} />
+                            <img 
+                                src={`${API_URL}${poster.imageUrl}`} 
+                                alt={poster.title}
+                                onClick={() => handleImageClick(`${API_URL}${poster.imageUrl}`, poster.title)}
+                            />
                             <div className="poster-category">{poster.category}</div>
                         </div>
                         <div className="poster-info">
                             <h3>{poster.title}</h3>
                             <div className="poster-metadata">
-                                <span className="date">{formatDate(poster.displayDate || poster.createdAt)}</span>
-                                {poster.tags && poster.tags.length > 0 && (
-                                    <div className="tags">
-                                        {poster.tags.map((tag, index) => (
-                                            <span key={index} className="tag">#{tag}</span>
-                                        ))}
-                                    </div>
-                                )}
+                                <div className="metadata-group">
+                                    <span className="date">{formatDate(poster.displayDate || poster.createdAt)}</span>
+                                    {poster.tags && poster.tags.length > 0 && (
+                                        <div className="tags">
+                                            {poster.tags.map((tag, index) => (
+                                                <span key={index} className="tag">#{tag}</span>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
                             </div>
                             <p className="description">{poster.description || 'No description provided'}</p>
                             
@@ -205,6 +218,22 @@ function Posts() {
                     </div>
                 ))}
             </div>
+
+            {/* Image Preview Modal */}
+            {isImagePreviewOpen && selectedImage && (
+                <div className="modal-overlay" onClick={() => setIsImagePreviewOpen(false)}>
+                    <div className="image-preview-modal" onClick={e => e.stopPropagation()}>
+                        <button 
+                            className="close-button"
+                            onClick={() => setIsImagePreviewOpen(false)}
+                        >
+                            ×
+                        </button>
+                        <img src={selectedImage.url} alt={selectedImage.title} />
+                        <h3>{selectedImage.title}</h3>
+                    </div>
+                </div>
+            )}
 
             {isModalOpen && (
                 <div className="modal-overlay">
